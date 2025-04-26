@@ -3,187 +3,182 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weather Dashboard</title>
-  <link rel="icon" href="https://openweathermap.org/img/wn/01d.png" type="image/png">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <title>Colorado Weather Dashboard</title>
+  <link rel="icon" href="https://openweathermap.org/img/wn/01d.png">
   <style>
     body {
-      font-family: 'Roboto', sans-serif;
-      background: var(--bg-color);
-      color: var(--text-color);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f0f0;
       margin: 0;
       padding: 20px;
-      transition: background 0.3s, color 0.3s;
-    }
-
-    :root {
-      --bg-color: #f0f0f0;
-      --text-color: #333;
-      --card-bg: #fff;
+      transition: background-color 0.3s, color 0.3s;
     }
 
     .dark-mode {
-      --bg-color: #121212;
-      --text-color: #f0f0f0;
-      --card-bg: #1e1e1e;
+      background-color: #121212;
+      color: #e0e0e0;
     }
 
-    .toggle-button {
+    h1 {
+      text-align: center;
       margin-bottom: 20px;
+    }
+
+    #toggleDarkMode {
+      display: block;
+      margin: 10px auto 20px;
       padding: 10px 20px;
-      cursor: pointer;
       background-color: #0077ff;
       color: white;
       border: none;
-      border-radius: 20px;
+      border-radius: 8px;
+      cursor: pointer;
       font-size: 16px;
     }
 
-    .dashboard {
+    .places {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 20px;
     }
 
     .card {
-      background: var(--card-bg);
-      border-radius: 15px;
-      padding: 20px;
+      background: white;
+      border-radius: 16px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      text-align: center;
-      transition: transform 0.3s;
+      padding: 20px;
+      transition: background-color 0.3s, color 0.3s;
     }
 
-    .card:hover {
-      transform: translateY(-5px);
+    .dark-mode .card {
+      background: #1e1e1e;
     }
 
-    .icon {
-      width: 80px;
-      height: 80px;
+    .card h2 {
+      margin-top: 0;
     }
 
     .forecast {
-      margin-top: 15px;
-    }
-
-    .forecast-days {
       display: flex;
       gap: 10px;
-      margin-top: 10px;
       overflow-x: auto;
+      padding-top: 10px;
     }
 
     .forecast-day {
+      background: #f9f9f9;
+      border-radius: 12px;
+      padding: 10px;
+      min-width: 100px;
       text-align: center;
-      min-width: 60px;
-      font-size: 12px;
+      transition: background-color 0.3s;
     }
 
-    .small-icon {
-      width: 30px;
-      height: 30px;
+    .dark-mode .forecast-day {
+      background: #2a2a2a;
     }
 
-    .loading {
-      text-align: center;
-      font-size: 24px;
-      margin-top: 50px;
-    }
-
-    footer {
-      text-align: center;
-      margin-top: 30px;
-      font-size: 12px;
-      color: grey;
+    .forecast-day img {
+      width: 50px;
+      height: 50px;
     }
   </style>
 </head>
-<body align=center>
+<body>
 
-<h1>Weather Dashboard</h1>
-<button class="toggle-button" onclick="toggleDarkMode()">Toggle Dark Mode</button>
-<div id="loading" class="loading">Loading weather data...</div>
-<div id="dashboard" class="dashboard" style="display:none;"></div>
+  <h1>Colorado Weather Dashboard</h1>
+  <button id="toggleDarkMode">Toggle Dark Mode</button>
 
-<footer>Made with ❤️ by Abhi</footer>
+  <div class="places" id="places"></div>
 
-<script>
-  const places = [
-    "Denver,US",
-    "Colorado Springs,US",
-    "Durango,US",
-    "Silverton,US",
-    "Aspen,US",
-    "Vail,US"
-  ];
+  <script>
+    const API_KEY = '0c860f0823e241272e97862631528587'; // <-- Replace with your real key
+    const places = ['Denver,US', 'Colorado Springs,US', 'Durango,US', 'Silverton,US', 'Aspen,US', 'Vail,US'];;
 
-  const API_KEY = "0c860f0823e241272e97862631528587"; // Replace this with your actual key
+    async function getWeatherData(place) {
+      const currentUrl = `https://api.openweathermap.org/data/2.5/weather?q=${place}&appid=${API_KEY}&units=metric`;
+      const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${place}&appid=${API_KEY}&units=metric`;
 
-  function toggleDarkMode() {
-    document.body.classList.toggle('dark-mode');
-  }
+      const [currentRes, forecastRes] = await Promise.all([
+        fetch(currentUrl),
+        fetch(forecastUrl)
+      ]);
 
-  async function getWeatherData(place) {
-    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?q=${place}&appid=${API_KEY}&units=metric`;
-    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${place}&appid=${API_KEY}&units=metric`;
+      const currentData = await currentRes.json();
+      const forecastData = await forecastRes.json();
 
-    const [currentRes, forecastRes] = await Promise.all([
-      fetch(currentUrl),
-      fetch(forecastUrl)
-    ]);
+      const forecastByDay = {};
+      forecastData.list.forEach(item => {
+        const date = item.dt_txt.split(' ')[0];
+        if (!forecastByDay[date]) {
+          forecastByDay[date] = [];
+        }
+        forecastByDay[date].push(item.main.temp);
+      });
 
-    const currentData = await currentRes.json();
-    const forecastData = await forecastRes.json();
+      const forecastArray = Object.keys(forecastByDay).slice(0, 5).map(date => {
+        const temps = forecastByDay[date];
+        const maxTemp = Math.max(...temps);
+        const minTemp = Math.min(...temps);
 
-    const forecastDays = forecastData.list.filter(item => item.dt_txt.includes("12:00:00")).slice(0,5);
+        const middayEntry = forecastData.list.find(item => item.dt_txt.startsWith(date) && item.dt_txt.includes('12:00:00')) || forecastData.list.find(item => item.dt_txt.startsWith(date));
+        const weatherIcon = middayEntry.weather[0].icon;
+        const weatherDescription = middayEntry.weather[0].description;
 
-    return { current: currentData, forecast: forecastDays };
-  }
+        return {
+          date,
+          temp_max: maxTemp,
+          temp_min: minTemp,
+          weatherIcon,
+          weatherDescription
+        };
+      });
 
-  function formatDate(timestamp) {
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  async function initDashboard() {
-    const dashboard = document.getElementById('dashboard');
-    const loading = document.getElementById('loading');
-
-    try {
-      const weatherData = await Promise.all(places.map(place => getWeatherData(place)));
-      dashboard.innerHTML = weatherData.map((data, index) => {
-        return `
-          <div class="card">
-            <h2>${places[index].split(",")[0]}</h2>
-            <img class="icon" src="https://openweathermap.org/img/wn/${data.current.weather[0].icon}@2x.png" alt="Weather icon">
-            <h3>${data.current.main.temp.toFixed(0)}&deg;C</h3>
-            <p>${data.current.weather[0].description}</p>
-            <div class="forecast">
-              <h4>5-Day Forecast:</h4>
-              <div class="forecast-days">
-                ${data.forecast.map(item => `
-                  <div class="forecast-day">
-                    <div>${formatDate(item.dt)}</div>
-                    <img src="https://openweathermap.org/img/wn/${item.weather[0].icon}.png" alt="Icon" class="small-icon">
-                    <div>${item.main.temp_max.toFixed(0)}&deg;C / ${item.main.temp_min.toFixed(0)}&deg;C</div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-      loading.style.display = 'none';
-      dashboard.style.display = 'grid';
-    } catch (error) {
-      console.error(error);
-      loading.innerText = "Error loading data";
+      return { current: currentData, forecast: forecastArray };
     }
-  }
 
-  initDashboard();
-</script>
+    function createCard(place, weather) {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      card.innerHTML = `
+        <h2>${place}</h2>
+        <h3>${Math.round(weather.current.main.temp)}°C</h3>
+        <img src="https://openweathermap.org/img/wn/${weather.current.weather[0].icon}@2x.png" alt="${weather.current.weather[0].description}">
+        <p>${weather.current.weather[0].description}</p>
+        <div class="forecast">
+          ${weather.forecast.map(day => `
+            <div class="forecast-day">
+              <strong>${new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}</strong><br>
+              <img src="https://openweathermap.org/img/wn/${day.weatherIcon}.png" alt="${day.weatherDescription}"><br>
+              ${Math.round(day.temp_max)}° / ${Math.round(day.temp_min)}°
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      return card;
+    }
+
+    async function loadWeather() {
+      const container = document.getElementById('places');
+      container.innerHTML = 'Loading...';
+
+      const allData = await Promise.all(places.map(place => getWeatherData(place)));
+
+      container.innerHTML = '';
+      places.forEach((place, idx) => {
+        const card = createCard(place, allData[idx]);
+        container.appendChild(card);
+      });
+    }
+
+    document.getElementById('toggleDarkMode').addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+    });
+
+    loadWeather();
+  </script>
 
 </body>
 </html>
