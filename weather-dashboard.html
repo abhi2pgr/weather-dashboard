@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Dashboard</title>
+  <link rel="icon" href="https://openweathermap.org/img/wn/01d.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    :root {
+      --bg-color: #f0f0f0;
+      --text-color: #333;
+      --card-bg: #fff;
+    }
+
+    .dark-mode {
+      --bg-color: #121212;
+      --text-color: #f0f0f0;
+      --card-bg: #1e1e1e;
+    }
+
+    .toggle-button {
+      margin-bottom: 20px;
+      padding: 10px 20px;
+      cursor: pointer;
+      background-color: #0077ff;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 16px;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+      transition: transform 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .icon {
+      width: 80px;
+      height: 80px;
+    }
+
+    .forecast {
+      margin-top: 15px;
+    }
+
+    .forecast-days {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      overflow-x: auto;
+    }
+
+    .forecast-day {
+      text-align: center;
+      min-width: 60px;
+      font-size: 12px;
+    }
+
+    .small-icon {
+      width: 30px;
+      height: 30px;
+    }
+
+    .loading {
+      text-align: center;
+      font-size: 24px;
+      margin-top: 50px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 12px;
+      color: grey;
+    }
+  </style>
+</head>
+<body align=center>
+
+<h1>Weather Dashboard</h1>
+<button class="toggle-button" onclick="toggleDarkMode()">Toggle Dark Mode</button>
+<div id="loading" class="loading">Loading weather data...</div>
+<div id="dashboard" class="dashboard" style="display:none;"></div>
+
+<footer>Made with ❤️ by Abhi</footer>
+
+<script>
+  const places = [
+    "Denver,US",
+    "Colorado Springs,US",
+    "Durango,US",
+    "Silverton,US",
+    "Aspen,US",
+    "Vail,US"
+  ];
+
+  const API_KEY = "0c860f0823e241272e97862631528587"; // Replace this with your actual key
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+  }
+
+  async function getWeatherData(place) {
+    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?q=${place}&appid=${API_KEY}&units=metric`;
+    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${place}&appid=${API_KEY}&units=metric`;
+
+    const [currentRes, forecastRes] = await Promise.all([
+      fetch(currentUrl),
+      fetch(forecastUrl)
+    ]);
+
+    const currentData = await currentRes.json();
+    const forecastData = await forecastRes.json();
+
+    const forecastDays = forecastData.list.filter(item => item.dt_txt.includes("12:00:00")).slice(0,5);
+
+    return { current: currentData, forecast: forecastDays };
+  }
+
+  function formatDate(timestamp) {
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  async function initDashboard() {
+    const dashboard = document.getElementById('dashboard');
+    const loading = document.getElementById('loading');
+
+    try {
+      const weatherData = await Promise.all(places.map(place => getWeatherData(place)));
+      dashboard.innerHTML = weatherData.map((data, index) => {
+        return `
+          <div class="card">
+            <h2>${places[index].split(",")[0]}</h2>
+            <img class="icon" src="https://openweathermap.org/img/wn/${data.current.weather[0].icon}@2x.png" alt="Weather icon">
+            <h3>${data.current.main.temp.toFixed(0)}&deg;C</h3>
+            <p>${data.current.weather[0].description}</p>
+            <div class="forecast">
+              <h4>5-Day Forecast:</h4>
+              <div class="forecast-days">
+                ${data.forecast.map(item => `
+                  <div class="forecast-day">
+                    <div>${formatDate(item.dt)}</div>
+                    <img src="https://openweathermap.org/img/wn/${item.weather[0].icon}.png" alt="Icon" class="small-icon">
+                    <div>${item.main.temp_max.toFixed(0)}&deg;C / ${item.main.temp_min.toFixed(0)}&deg;C</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      loading.style.display = 'none';
+      dashboard.style.display = 'grid';
+    } catch (error) {
+      console.error(error);
+      loading.innerText = "Error loading data";
+    }
+  }
+
+  initDashboard();
+</script>
+
+</body>
+</html>
